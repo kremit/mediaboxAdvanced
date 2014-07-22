@@ -27,9 +27,9 @@ var Mediabox;
 	// Global variables, accessible to Mediabox only
 	var options, mediaArray, activeMedia, prevMedia, nextMedia, top, mTop, left, mLeft, winWidth, winHeight, fx, preload, preloadPrev = new Image(), preloadNext = new Image(),
 	// DOM elements
-	overlay, center, media, bottom, captionSplit, title, caption, number, prevLink, nextLink,
+	overlay, center, container, media, bottom, captionSplit, title, caption, number, prevLink, nextLink, closeLink,
 	// Mediabox specific vars
-	URL, WH, WHL, elrel, mediaWidth, mediaHeight, mediaType = "none", mediaSplit, mediaId = "mediaBox", margin, marginBottom;
+	URL, WH, WHL, elrel, mediaWidth, mediaHeight, mediaType = "none", mediaSplit, mediaId = "mediaBox", margin, marginBottom, closeLinkWidth;
 
 	/*	Initialization	*/
 
@@ -41,17 +41,17 @@ var Mediabox;
 				center = new Element("div", {id: "mbCenter"})
 			]).setStyle("display", "none")
 		);
+		center.adopt(closeLink = new Element("a", {id: "mbCloseLink", href: "#"}).addEvent("click", close));
 
 		container = new Element("div", {id: "mbContainer"}).inject(center, "inside");
-			media = new Element("div", {id: "mbMedia"}).inject(container, "inside");
-		bottom = new Element("div", {id: "mbBottom"}).inject(center, "inside").adopt(
-			closeLink = new Element("a", {id: "mbCloseLink", href: "#"}).addEvent("click", close),
+		media = new Element("div", {id: "mbMedia"}).inject(container, "inside");
+		bottom = new Element("div", {id: "mbBottom"}).inject(container, "inside").adopt(
 			nextLink = new Element("a", {id: "mbNextLink", href: "#"}).addEvent("click", next),
 			prevLink = new Element("a", {id: "mbPrevLink", href: "#"}).addEvent("click", previous),
 			title = new Element("div", {id: "mbTitle"}),
 			number = new Element("div", {id: "mbNumber"}),
 			caption = new Element("div", {id: "mbCaption"})
-			);
+		);
 
 		fx = {
 			overlay: new Fx.Tween(overlay, {property: "opacity", duration: 360}).set(0),
@@ -70,17 +70,16 @@ var Mediabox;
 		recenter: function(){	// Thanks to Garo Hussenjian (Xapnet Productions http://www.xapnet.com) for suggesting this addition
 			if (center && !Browser.Platform.ios) {
 				left = window.getScrollLeft() + (window.getWidth()/2);
-				center.setStyles({left: left, marginLeft: -(mediaWidth/2)-margin});
-//				top = window.getScrollTop() + (window.getHeight()/2);
-//				margin = center.getStyle('padding-left').toInt()+media.getStyle('margin-left').toInt()+media.getStyle('padding-left').toInt();
-//				center.setStyles({top: top, left: left, marginTop: -(mediaHeight/2)-margin, marginLeft: -(mediaWidth/2)-margin});
+				if(!isNaN(mediaWidth/2)) { // mediaWidth is sometimes non-number value. IE8 can't eat NaN.
+					center.setStyles({left: left, marginLeft: -(mediaWidth/2)-margin});
+				}
 			}
 		},
 
 		open: function(_mediaArray, startMedia, _options) {
 			options = {
 //			Text options (translate as needed)
-				buttonText: ['<big>&laquo;</big>','<big>&raquo;</big>','<big>&times;</big>'],		// Array defines "previous", "next", and "close" button content (HTML code should be written as entity codes or properly escaped)
+				buttonText: ['<big>&laquo;</big>','<big>&raquo;</big>','&times;'],		// Array defines "previous", "next", and "close" button content (HTML code should be written as entity codes or properly escaped)
 //				buttonText: ['<big>«</big>','<big>»</big>','<big>×</big>'],
 //				buttonText: ['<b>P</b>rev','<b>N</b>ext','<b>C</b>lose'],
 				counterText: '({x} of {y})',	// Counter text, {x} = current item number, {y} = total gallery length
@@ -103,7 +102,7 @@ var Mediabox;
 				showCaption: true,				// Display the title and caption, true / false
 				showCounter: true,				// If true, a counter will only be shown if there is more than 1 image to display
 				countBack: false,				// Inverts the displayed number (so instead of the first element being labeled 1/10, it's 10/10)
-				clickBlock: true,				// Adds an event on right-click to block saving of images from the context menu in most browsers (this can't prevent other ways of downloading, but works as a casual deterent)
+				clickBlock: false,				// Adds an event on right-click to block saving of images from the context menu in most browsers (this can't prevent other ways of downloading, but works as a casual deterent)
 								// due to less than ideal code ordering, clickBlock on links must be removed manually around line 250
 //			iOS device options
 //				iOSenable: false,				// When set to false, disables overlay entirely (links open in new tab)
@@ -115,8 +114,6 @@ var Mediabox;
 											// CSS background is naturally non-clickable, preventing downloads
 											// IMG tag allows automatic scaling for smaller screens
 											// (all images have no-click code applied, albeit not Opera compatible. To remove, comment lines 212 and 822)
-				imgPadding: 100,			// Clearance necessary for images larger than the window size (only used when imgBackground is false)
-											// Change this number only if the CSS style is significantly divergent from the original, and requires different sizes
 //			Inline options
 				overflow: 'auto',			// If set, overides CSS settings for inline content only, set to "false" to leave CSS settings intact.
 				inlineClone: false,			// Clones the inline element instead of moving it from the page to the overlay
@@ -205,10 +202,26 @@ var Mediabox;
 			setup(true);
 			top = window.getScrollTop() + (window.getHeight()/2);
 			left = window.getScrollLeft() + (window.getWidth()/2);
-			margin = center.getStyle('padding-left').toInt()+media.getStyle('margin-left').toInt()+media.getStyle('padding-left').toInt();
-			marginBottom = bottom.getStyle('margin-left').toInt()+bottom.getStyle('padding-left').toInt()+bottom.getStyle('margin-right').toInt()+bottom.getStyle('padding-right').toInt();
+			
+			/* IE11 NaN fix from: https://groups.google.com/forum/#!topic/mediaboxsupport/0_i6GifqQuk */
+			var cp = center.getStyle('padding-left').toInt();
+			if (isNaN(cp)) cp = 0;
+			var mm = media.getStyle('margin-left').toInt();
+			if (isNaN(mm)) mm = 0;
+			var mp = media.getStyle('padding-left').toInt();
+			if (isNaN(mp)) mp = 0;
+			margin = cp + mm + mp;
+			cp = center.getStyle('padding-top').toInt();
+			if (isNaN(cp)) cp = 0;
+			mm = media.getStyle('margin-top').toInt();
+			if (isNaN(mm)) mm = 0;
+			mp = media.getStyle('padding-top').toInt();
+			if (isNaN(mp)) mp = 0;
+			marginBottom = cp + mm + mp;
+			closeLinkWidth = closeLink.getStyle('width').toInt();
+			if (isNaN(closeLinkWidth)) closeLinkWidth = 0;
 
-/****/		center.setStyles({top: top, left: left, width: options.initialWidth, height: options.initialHeight, marginTop: -(options.initialHeight/2)-margin, marginLeft: -(options.initialWidth/2)-margin, display: ""});
+			center.setStyles({top: top, left: left, width: options.initialWidth, height: options.initialHeight, marginTop: -(options.initialHeight/2), marginLeft: -(options.initialWidth/2), display: ""});
 			fx.resize = new Fx.Morph(center, {duration: options.resizeDuration, onComplete: mediaAnimate});
 			fx.overlay.start(options.overlayOpacity);
 			return changeMedia(startMedia);
@@ -246,9 +259,11 @@ var Mediabox;
 			var links = this;
 
 /*  clickBlock code - remove the following three lines to enable right-clicking on links to images  */
-			links.addEvent('contextmenu', function(e){
-				if (this.toString().match(/\.gif|\.jpg|\.jpeg|\.png/i)) e.stop();
-			});
+			if (_options.clickBlock) {
+				links.addEvent('contextmenu', function(e){
+					if (this.toString().match(/\.gif|\.jpg|\.jpeg|\.png/i)) e.stop();
+				});
+			}
 
 			links.removeEvents("click").addEvent("click", function() {
 				// Build the list of media that will be displayed
@@ -348,6 +363,7 @@ var Mediabox;
 //				return false;
 //			}
 			media.set('html', '');
+			media.setStyle('display', 'none');
 			activeMedia = mediaIndex;
 			prevMedia = ((activeMedia || !options.loop) ? activeMedia : mediaArray.length) - 1;
 			nextMedia = activeMedia + 1;
@@ -818,18 +834,24 @@ var Mediabox;
 			if (options.imgBackground) {
 				media.setStyles({backgroundImage: "url("+URL+")", display: ""});
 			} else {	// Thanks to Dusan Medlin for fixing large 16x9 image errors in a 4x3 browser
-				if (mediaHeight >= winHeight-options.imgPadding && (mediaHeight / winHeight) >= (mediaWidth / winWidth)) {
-					mediaHeight = winHeight-options.imgPadding;
+				if (mediaHeight >= (winHeight - (marginBottom + marginBottom)) && (mediaHeight / winHeight) >= (mediaWidth / winWidth)) {
+					mediaHeight = winHeight - (marginBottom + marginBottom);
 					mediaWidth = preload.width = parseInt((mediaHeight/preload.height)*mediaWidth, 10);
 					preload.height = mediaHeight;
-				} else if (mediaWidth >= winWidth-options.imgPadding && (mediaHeight / winHeight) < (mediaWidth / winWidth)) {
-					mediaWidth = winWidth-options.imgPadding;
+				} else if (mediaWidth >= (winWidth - (margin + margin + closeLinkWidth + closeLinkWidth)) && (mediaHeight / winHeight) < (mediaWidth / winWidth)) {
+					mediaWidth = winWidth - (margin + margin + closeLinkWidth + closeLinkWidth);
+					mediaHeight = preload.height = parseInt((mediaWidth/preload.width)*mediaHeight, 10);
+					preload.width = mediaWidth;
+				}
+				// FIXME Sanity check on images that fit perfectly in the vertical (cuts off the close button)
+				if((mediaWidth + margin + margin + closeLinkWidth + closeLinkWidth) > (winWidth - 32)) {
+					mediaWidth = mediaWidth - 64;
 					mediaHeight = preload.height = parseInt((mediaWidth/preload.width)*mediaHeight, 10);
 					preload.width = mediaWidth;
 				}
 				if (Browser.ie) preload = document.id(preload);
 				if (options.clickBlock) preload.addEvent('mousedown', function(e){ e.stop(); }).addEvent('contextmenu', function(e){ e.stop(); });
-				media.setStyles({backgroundImage: "none", display: ""});
+				media.setStyles({backgroundImage: 'none', display: 'none'});
 				preload.inject(media);
 			}
 //			mediaWidth += "px";
@@ -886,28 +908,32 @@ var Mediabox;
 		if (prevMedia >= 0) prevLink.style.display = "";
 		if (nextMedia >= 0) nextLink.style.display = "";
 		media.setStyles({width: mediaWidth+"px", height: mediaHeight+"px"});
-		bottom.setStyles({width: mediaWidth-marginBottom+"px"});
-		caption.setStyles({width: mediaWidth-marginBottom+"px"});
+//		bottom.setStyles({width: mediaWidth+"px"});
+//		caption.setStyles({width: mediaWidth+"px"});
 
-		mediaWidth = media.offsetWidth;
-		mediaHeight = media.offsetHeight+bottom.offsetHeight;
+//		mediaWidth = media.offsetWidth;
+//		mediaHeight = media.offsetHeight+bottom.offsetHeight;
 		if (mediaHeight >= top+top) { mTop = -top; } else { mTop = -(mediaHeight/2); }
 		if (mediaWidth >= left+left) { mLeft = -left; } else { mLeft = -(mediaWidth/2); }
-/****/	if (options.resizeOpening) { fx.resize.start({width: mediaWidth, height: mediaHeight, marginTop: mTop-margin, marginLeft: mLeft-margin});
-/****/	} else { center.setStyles({width: mediaWidth, height: mediaHeight, marginTop: mTop-margin, marginLeft: mLeft-margin}); mediaAnimate(); }
-//		center.setStyles({width: mediaWidth, height: mediaHeight, marginTop: mTop-margin, marginLeft: mLeft-margin});
-//		mediaAnimate();
+		if (options.resizeOpening) {
+			fx.resize.start({width: mediaWidth + margin + margin, height: mediaHeight + marginBottom + marginBottom, marginTop: mTop - marginBottom, marginLeft: mLeft - margin});
+		} else {
+			center.setStyles({width: mediaWidth + margin + margin, height: mediaHeight + marginBottom + marginBottom, marginTop: mTop - marginBottom, marginLeft: mLeft - margin});
+			mediaAnimate();
+		}
 	}
 
 	function mediaAnimate() {
+		media.setStyle('display', 'block');
 		fx.media.start(1);
 	}
 
 	function captionAnimate() {
 		center.className = "";
-//		if (prevMedia >= 0) prevLink.style.display = "";
-//		if (nextMedia >= 0) nextLink.style.display = "";
-		fx.bottom.start(1);
+		// Don't show the caption at all if it is empty
+		if(mediaArray[activeMedia][1].length > 0) {
+			fx.bottom.start(1);
+		}
 	}
 
 	function stop() {
