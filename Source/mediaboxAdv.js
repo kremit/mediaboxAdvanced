@@ -1,6 +1,8 @@
 /*
 mediaboxAdvanced v1.5.4 - The ultimate extension of Slimbox and Mediabox; an all-media script
-updated 2011.2.19
+Updated 2015-06-15 by Wesley Haines
+	IE 11/8 fixes, move close button to upper-right corner
+Updated 2011.2.19
 	(c) 2007-2011 John Einselen - http://iaian7.com
 based on Slimbox v1.64 - The ultimate lightweight Lightbox clone
 	(c) 2007-2008 Christophe Beyls - http://www.digitalia.be
@@ -180,7 +182,6 @@ var Mediabox;
 				options.resizeOpening = false;	// Speeds up interaction on small devices (mobile) or older computers (IE6)
 				overlay.className = 'mbMobile';
 				bottom.className = 'mbMobile';
-//				options.overlayOpacity = 0.001;	// Helps ameliorate the issues with CSS overlays in iOS, leaving a clickable background, but avoiding the visible issues
 				position();
 			}
 
@@ -218,7 +219,7 @@ var Mediabox;
 			mp = media.getStyle('padding-top').toInt();
 			if (isNaN(mp)) mp = 0;
 			marginBottom = cp + mm + mp;
-			closeLinkWidth = closeLink.getStyle('width').toInt();
+			closeLinkWidth = closeLink.getStyle('width').toInt()+1;
 			if (isNaN(closeLinkWidth)) closeLinkWidth = 0;
 
 			center.setStyles({top: top, left: left, width: options.initialWidth, height: options.initialHeight, marginTop: -(options.initialHeight/2), marginLeft: -(options.initialWidth/2), display: ""});
@@ -825,27 +826,22 @@ var Mediabox;
 	}
 
 	function startEffect() {
-//		if (Browser.Platform.ios && (mediaType == "obj" || mediaType == "qt" || mediaType == "html")) alert("this isn't gonna work");
-//		if (Browser.Platform.ios && (mediaType == "obj" || mediaType == "qt" || mediaType == "html")) mediaType = "ios";
-		(mediaType == "img")?media.addEvent("click", next):media.removeEvent("click", next);
-		if (mediaType == "img"){
+		(mediaType == "img") ? media.addEvent("click", next) : media.removeEvent("click", next);
+		if (mediaType == "img") {
 			mediaWidth = preload.width;
 			mediaHeight = preload.height;
 			if (options.imgBackground) {
 				media.setStyles({backgroundImage: "url("+URL+")", display: ""});
-			} else {	// Thanks to Dusan Medlin for fixing large 16x9 image errors in a 4x3 browser
-				if (mediaHeight >= (winHeight - (marginBottom + marginBottom)) && (mediaHeight / winHeight) >= (mediaWidth / winWidth)) {
-					mediaHeight = winHeight - (marginBottom + marginBottom);
+			} else {
+				vSpacingRequired = marginBottom + marginBottom;
+				hSpacingRequired = margin + margin + closeLinkWidth + closeLinkWidth;
+				if(mediaHeight > (winHeight - vSpacingRequired)) {
+					mediaHeight = winHeight - vSpacingRequired;
 					mediaWidth = preload.width = parseInt((mediaHeight/preload.height)*mediaWidth, 10);
 					preload.height = mediaHeight;
-				} else if (mediaWidth >= (winWidth - (margin + margin + closeLinkWidth + closeLinkWidth)) && (mediaHeight / winHeight) < (mediaWidth / winWidth)) {
-					mediaWidth = winWidth - (margin + margin + closeLinkWidth + closeLinkWidth);
-					mediaHeight = preload.height = parseInt((mediaWidth/preload.width)*mediaHeight, 10);
-					preload.width = mediaWidth;
 				}
-				// FIXME Sanity check on images that fit perfectly in the vertical (cuts off the close button)
-				if((mediaWidth + margin + margin + closeLinkWidth + closeLinkWidth) > (winWidth - 32)) {
-					mediaWidth = mediaWidth - 64;
+				if(mediaWidth > (winWidth - hSpacingRequired)) {
+					mediaWidth = winWidth - hSpacingRequired;
 					mediaHeight = preload.height = parseInt((mediaWidth/preload.width)*mediaHeight, 10);
 					preload.width = mediaWidth;
 				}
@@ -987,12 +983,9 @@ Mediabox.scanPage = function() {
 	var links = $$("a").filter(function(el) {
 		return el.rel && el.rel.test(/^lightbox/i);
 	});
-//	$$(links).mediabox({/* Put custom options here */}, null, function(el) {
 	links.mediabox({/* Put custom options here */}, null, function(el) {
 		var rel0 = this.rel.replace(/[\[\]|]/gi," ");
 		var relsize = rel0.split(" ");
-//		return (this == el) || ((this.rel.length > 8) && el.rel.match(relsize[1]));
-
 		var relsearch = "\\["+relsize[1]+"[ \\]]";
 		var relregexp = new RegExp(relsearch);
 		return (this == el) || ((this.rel.length > 8) && el.rel.match(relregexp));
